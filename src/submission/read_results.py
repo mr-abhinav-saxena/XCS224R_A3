@@ -1,12 +1,14 @@
 import glob
 import tensorflow as tf
 
-def get_section_results(file):
+from typing import Tuple, List
+
+def get_section_results(file: str) -> Tuple[List[float], List[float]]:
     """
         requires tensorflow==1.12.0
     """
-    X = []
-    Y = []
+    X: List[float] = []
+    Y: List[float] = []
     for e in tf.train.summary_iterator(file):
         for v in e.summary.value:
             if v.tag == 'Train_EnvstepsSoFar':

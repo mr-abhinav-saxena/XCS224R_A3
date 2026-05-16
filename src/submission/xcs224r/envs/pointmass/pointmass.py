@@ -341,7 +341,7 @@ class Pointmass(gym.Env):
     np.random.seed(seed)
     
   def reset(self, seed=None, options=None):
-    if seed: self.seed(seed)
+    if seed is not None: self.seed(seed)
         
     if len(self.obs_vec) > 0:
       self.last_trajectory = self.plot_trajectory()
@@ -534,7 +534,7 @@ class Pointmass(gym.Env):
     state_index = np.random.choice(num_candidate_states)
     state = np.array([candidate_states[0][state_index],
                       candidate_states[1][state_index]],
-                     dtype=np.float)
+                     dtype=np.float64)
     state += np.random.uniform(size=2)
     assert not self._is_blocked(state)
     return state
@@ -567,24 +567,24 @@ if __name__ == '__main__':
 
     print ('Start: ', start_state, ' Goal state: ', goal_state, total_samples)
     # curr_state = start_state
-    curr_state = env.reset(start_state)
-    done = False
+    curr_state = env.reset()
+
     for i in range(env.max_episode_steps):
       action = env.get_optimal_action(goal_state)
       temp_bern = (np.random.rand() < 0.2)
       if temp_bern:
         action = np.random.randint(5)
       
-      next_state, reward, done, _ = env.step(action)
+      next_state, reward, terminated, truncated, _ = env.step(action)
       if reward >= 0:
         num_positive_rewards += 1
       path['observations'].append(curr_state)
       path['actions'].append(action)
       path['next_observations'].append(next_state)
-      path['terminals'].append(done)
+      path['terminals'].append(terminated or truncated)
       path['rewards'].append(reward)
 
-      if done == True:
+      if terminated or truncated == True:
         total_samples += i
         break
 

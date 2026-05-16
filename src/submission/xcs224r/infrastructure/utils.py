@@ -1,11 +1,12 @@
 import numpy as np
 import time
 import copy
+from typing import Any, Dict, List, Tuple
 
 ############################################
 ############################################
 
-def calculate_mean_prediction_error(env, action_sequence, models, data_statistics):
+def calculate_mean_prediction_error(env: Any, action_sequence: Any, models: Any, data_statistics: Any) -> Tuple[float, np.ndarray, np.ndarray]:
 
     model = models[0]
 
@@ -14,19 +15,19 @@ def calculate_mean_prediction_error(env, action_sequence, models, data_statistic
 
     # predicted
     ob = np.expand_dims(true_states[0],0)
-    pred_states = []
+    pred_states_list = []
     for ac in action_sequence:
-        pred_states.append(ob)
+        pred_states_list.append(ob)
         action = np.expand_dims(ac,0)
         ob = model.get_prediction(ob, action, data_statistics)
-    pred_states = np.squeeze(pred_states)
+    pred_states = np.squeeze(pred_states_list)
 
     # mpe
     mpe = mean_squared_error(pred_states, true_states)
 
     return mpe, true_states, pred_states
 
-def perform_actions(env, actions):
+def perform_actions(env: Any, actions: List[Any]) -> Dict[str, np.ndarray]:
     ob, _ = env.reset()
     obs, acs, rewards, next_obs, terminals, image_obs = [], [], [], [], [], []
     steps = 0
@@ -48,13 +49,13 @@ def perform_actions(env, actions):
 
     return Path(obs, image_obs, acs, rewards, next_obs, terminals)
 
-def mean_squared_error(a, b):
+def mean_squared_error(a: np.ndarray, b: np.ndarray) -> float:
     return np.mean((a-b)**2)
 
 ############################################
 ############################################
 
-def sample_trajectory(env, policy, max_path_length, render=False, render_mode=('rgb_array')):
+def sample_trajectory(env: Any, policy: Any, max_path_length: int, render: bool=False, render_mode: str=('rgb_array')) -> Dict[str, np.ndarray]:
     ob, _ = env.reset()
     obs, acs, rewards, next_obs, terminals, image_obs = [], [], [], [], [], []
     steps = 0
@@ -90,7 +91,7 @@ def sample_trajectory(env, policy, max_path_length, render=False, render_mode=('
             terminals.append(0)
     return Path(obs, image_obs, acs, rewards, next_obs, terminals)
 
-def sample_trajectories(env, policy, min_timesteps_per_batch, max_path_length, render=False, render_mode=('rgb_array')):
+def sample_trajectories(env: Any, policy: Any, min_timesteps_per_batch: int, max_path_length: int, render: bool=False, render_mode: str=('rgb_array')) -> Tuple[List[Dict[str, np.ndarray]], int]:
 
     timesteps_this_batch = 0
     paths = []
@@ -106,7 +107,7 @@ def sample_trajectories(env, policy, min_timesteps_per_batch, max_path_length, r
 
     return paths, timesteps_this_batch
 
-def sample_n_trajectories(env, policy, ntraj, max_path_length, render=False, render_mode=('rgb_array')):
+def sample_n_trajectories(env: Any, policy: Any, ntraj: int, max_path_length: int, render: bool=False, render_mode: str=('rgb_array')) -> List[Dict[str, np.ndarray]]:
 
     paths = []
     for i in range(ntraj):
@@ -116,22 +117,23 @@ def sample_n_trajectories(env, policy, ntraj, max_path_length, render=False, ren
 
     return paths
 
-def Path(obs, image_obs, acs, rewards, next_obs, terminals):
+def Path(obs: List[Any], image_obs: List[Any], acs: List[Any], rewards: List[Any], next_obs: List[Any], terminals: List[Any]) -> Dict[str, np.ndarray]:
     """
         Take info (separate arrays) from a single rollout
         and return it in a single dictionary
     """
+    image_obs_np: Any = image_obs
     if image_obs != []:
-        image_obs = np.stack(image_obs, axis=0)
+        image_obs_np = np.stack(image_obs, axis=0)
     return {"observation" : np.array(obs, dtype=np.float32),
-            "image_obs" : np.array(image_obs, dtype=np.uint8),
+            "image_obs" : np.array(image_obs_np, dtype=np.uint8),
             "reward" : np.array(rewards, dtype=np.float32),
             "action" : np.array(acs, dtype=np.float32),
             "next_observation": np.array(next_obs, dtype=np.float32),
             "terminal": np.array(terminals, dtype=np.float32)}
 
 
-def convert_listofrollouts(paths):
+def convert_listofrollouts(paths: List[Dict[str, np.ndarray]]) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, List[np.ndarray]]:
     """
         Take a list of rollout dictionaries
         and return separate arrays,
@@ -148,16 +150,16 @@ def convert_listofrollouts(paths):
 ############################################
 ############################################
 
-def get_pathlength(path):
+def get_pathlength(path: Dict[str, np.ndarray]) -> int:
     return len(path["reward"])
 
-def normalize(data, mean, std, eps=1e-8):
+def normalize(data: np.ndarray, mean: np.ndarray, std: np.ndarray, eps: float=1e-8) -> np.ndarray:
     return (data-mean)/(std+eps)
 
-def unnormalize(data, mean, std):
+def unnormalize(data: np.ndarray, mean: np.ndarray, std: np.ndarray) -> np.ndarray:
     return data*std+mean
 
-def add_noise(data_inp, noiseToSignal=0.01):
+def add_noise(data_inp: np.ndarray, noiseToSignal: float=0.01) -> np.ndarray:
 
     data = copy.deepcopy(data_inp) #(num data points, dim)
 

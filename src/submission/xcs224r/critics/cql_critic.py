@@ -4,13 +4,15 @@ import torch.optim as optim
 from torch.nn import utils
 from torch import nn
 import pdb
+import numpy as np
+from typing import Any, Dict, Tuple
 
 from xcs224r.infrastructure import pytorch_util as ptu
 
 
 class CQLCritic(BaseCritic):
 
-    def __init__(self, hparams, optimizer_spec, **kwargs):
+    def __init__(self, hparams: Dict[str, Any], optimizer_spec: Any, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.env_name = hparams['env_name']
         self.ob_dim = hparams['ob_dim']
@@ -20,10 +22,10 @@ class CQLCritic(BaseCritic):
         else:
             self.input_shape = hparams['input_shape']
 
-        self.ac_dim = hparams['ac_dim']
-        self.double_q = hparams['double_q']
-        self.grad_norm_clipping = hparams['grad_norm_clipping']
-        self.gamma = hparams['gamma']
+        self.ac_dim: int = hparams['ac_dim']
+        self.double_q: bool = hparams['double_q']
+        self.grad_norm_clipping: float = hparams['grad_norm_clipping']
+        self.gamma: float = hparams['gamma']
 
         self.optimizer_spec = optimizer_spec
         network_initializer = hparams['q_func']
@@ -40,9 +42,9 @@ class CQLCritic(BaseCritic):
         self.loss = nn.MSELoss()
         self.q_net.to(ptu.device)
         self.q_net_target.to(ptu.device)
-        self.cql_alpha = hparams['cql_alpha']
+        self.cql_alpha: float = hparams['cql_alpha']
 
-    def dqn_loss(self, ob_no, ac_na, next_ob_no, reward_n, terminal_n):
+    def dqn_loss(self, ob_no: torch.Tensor, ac_na: torch.Tensor, next_ob_no: torch.Tensor, reward_n: torch.Tensor, terminal_n: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         qa_t_values = self.q_net(ob_no)
         q_t_values = torch.gather(qa_t_values, 1, ac_na.unsqueeze(1)).squeeze(1)
         qa_tp1_values = self.q_net_target(next_ob_no)
@@ -57,7 +59,7 @@ class CQLCritic(BaseCritic):
         return loss, qa_t_values, q_t_values
 
 
-    def update(self, ob_no, ac_na, next_ob_no, reward_n, terminal_n):
+    def update(self, ob_no: np.ndarray, ac_na: np.ndarray, next_ob_no: np.ndarray, reward_n: np.ndarray, terminal_n: np.ndarray) -> Dict[str, Any]:
         """
             Update the parameters of the critic.
             let sum_of_path_lengths be the sum of the lengths of the paths sampled from
@@ -101,13 +103,13 @@ class CQLCritic(BaseCritic):
 
         return info
 
-    def update_target_network(self):
+    def update_target_network(self) -> None:
         for target_param, param in zip(
                 self.q_net_target.parameters(), self.q_net.parameters()
         ):
             target_param.data.copy_(param.data)
 
-    def qa_values(self, obs):
+    def qa_values(self, obs: np.ndarray) -> np.ndarray:
         obs = ptu.from_numpy(obs)
         qa_values = self.q_net(obs)
         return ptu.to_numpy(qa_values)

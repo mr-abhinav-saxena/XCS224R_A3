@@ -1,17 +1,17 @@
 import numpy as np
 import pdb
-
+from typing import Any
 
 class ArgMaxPolicy(object):
 
-    def __init__(self, critic, use_boltzmann=False):
+    def __init__(self, critic: Any, use_boltzmann: bool=False) -> None:
         self.critic = critic
         self.use_boltzmann = use_boltzmann
 
-    def set_critic(self, critic):
+    def set_critic(self, critic: Any) -> None:
         self.critic = critic
 
-    def get_action(self, obs):
+    def get_action(self, obs: np.ndarray) -> np.ndarray:
         if len(obs.shape) > 3:
             observation = obs
         else:
@@ -29,7 +29,7 @@ class ArgMaxPolicy(object):
 
         return action[0]
 
-    def sample_discrete(self, p):
+    def sample_discrete(self, p: np.ndarray) -> np.ndarray:
         c = p.cumsum(axis=1)
         u = np.random.rand(len(c), 1)
         choices = (u < c).argmax(axis=1)

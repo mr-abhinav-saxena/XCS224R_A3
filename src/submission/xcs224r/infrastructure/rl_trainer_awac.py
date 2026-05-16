@@ -4,6 +4,7 @@ import os
 import sys
 import time
 import pdb
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import gymnasium as gym
 from gymnasium import wrappers
@@ -32,7 +33,7 @@ MAX_VIDEO_LEN = 40 # we overwrite this in the code below
 
 class RL_Trainer(object):
 
-    def __init__(self, params):
+    def __init__(self, params: Dict[str, Any]) -> None:
 
         #############
         ## INIT
@@ -145,10 +146,10 @@ class RL_Trainer(object):
         agent_class = self.params['agent_class']
         self.agent = agent_class(self.env, self.params['agent_params'])
 
-    def run_training_loop(self, n_iter, collect_policy, eval_policy,
-                          buffer_name=None,
-                          initial_expertdata=None, relabel_with_expert=False,
-                          start_relabel_with_expert=1, expert_policy=None):
+    def run_training_loop(self, n_iter: int, collect_policy: Any, eval_policy: Any,
+                          buffer_name: Optional[str]=None,
+                          initial_expertdata: Optional[str]=None, relabel_with_expert: bool=False,
+                          start_relabel_with_expert: int=1, expert_policy: Any=None) -> None:
         """
         :param n_iter:  number of (dagger) iterations
         :param collect_policy:
@@ -191,8 +192,6 @@ class RL_Trainer(object):
                 paths = None
             else:
                 use_batchsize = self.params['batch_size']
-                if itr==0:
-                    use_batchsize = self.params['batch_size_initial']
                 paths, envsteps_this_batch, train_video_paths = (
                     self.collect_training_trajectories(
                         itr, initial_expertdata, collect_policy, use_batchsize)
@@ -235,7 +234,7 @@ class RL_Trainer(object):
     ####################################
     ####################################
 
-    def collect_training_trajectories(self, itr, initial_expertdata, collect_policy, num_transitions_to_sample, save_expert_data_to_disk=False):
+    def collect_training_trajectories(self, itr: int, initial_expertdata: Any, collect_policy: Any, num_transitions_to_sample: int, save_expert_data_to_disk: bool=False) -> Tuple[List[Dict[str, np.ndarray]], int, Optional[List[Dict[str, np.ndarray]]]]:
         """
         :param itr:
         :param load_initial_expertdata:  path to expert data pkl file
@@ -250,8 +249,6 @@ class RL_Trainer(object):
             if initial_expertdata is not None:
                 paths = pickle.load(open(self.params['expert_data'], 'rb'))
                 return paths, 0, None
-            if save_expert_data_to_disk:
-                num_transitions_to_sample = self.params['batch_size_initial']
 
         # collect data to be used for training
         print("\nCollecting data to be used for training...")
@@ -269,7 +266,7 @@ class RL_Trainer(object):
 
         return paths, envsteps_this_batch, train_video_paths
 
-    def train_agent(self):
+    def train_agent(self) -> List[Dict[str, Any]]:
         all_logs = []
         for train_step in range(self.params['num_agent_train_steps_per_iter']):
             ob_batch, ac_batch, re_batch, next_ob_batch, terminal_batch = self.agent.sample(self.params['train_batch_size'])
@@ -280,14 +277,14 @@ class RL_Trainer(object):
     ####################################
     ####################################
 
-    def do_relabel_with_expert(self, expert_policy, paths):
+    def do_relabel_with_expert(self, expert_policy: Any, paths: Any) -> Any:
         raise NotImplementedError
         # hw1/hw2, can ignore it b/c it's not used for this hw
 
     ####################################
     ####################################
     
-    def perform_dqn_logging(self, all_logs):
+    def perform_dqn_logging(self, all_logs: List[Dict[str, Any]]) -> None:
         last_log = all_logs[-1]
 
         # Handle environments with and without get_episode_rewards method
@@ -338,7 +335,7 @@ class RL_Trainer(object):
 
         self.logger.flush()
 
-    def perform_logging(self, itr, paths, eval_policy, train_video_paths, all_logs):
+    def perform_logging(self, itr: int, paths: List[Dict[str, np.ndarray]], eval_policy: Any, train_video_paths: Optional[List[Dict[str, np.ndarray]]], all_logs: List[Dict[str, Any]]) -> None:
 
         last_log = all_logs[-1]
 
@@ -405,7 +402,7 @@ class RL_Trainer(object):
 
             self.logger.flush()
 
-    def dump_density_graphs(self, itr):
+    def dump_density_graphs(self, itr: int) -> None:
         import matplotlib.pyplot as plt
         self.fig = plt.figure()
         filepath = lambda name: self.params['logdir']+'/curr_{}.png'.format(name)

@@ -1,7 +1,8 @@
-from typing import Union
+from typing import Union, Any, List
 
 import torch
 from torch import nn
+import numpy as np
 
 Activation = Union[str, nn.Module]
 
@@ -24,8 +25,8 @@ def build_mlp(
         size: int,
         activation: Activation = 'tanh',
         output_activation: Activation = 'identity',
-        init_method=None,
-):
+        init_method: Any=None,
+) -> nn.Module:
     """
         Builds a feedforward neural network
         arguments:
@@ -44,7 +45,7 @@ def build_mlp(
         activation = _str_to_activation[activation]
     if isinstance(output_activation, str):
         output_activation = _str_to_activation[output_activation]
-    layers = []
+    layers: List[nn.Module] = []
     in_size = input_size
     for _ in range(n_layers):
         curr_layer = nn.Linear(in_size, size)
@@ -64,10 +65,10 @@ def build_mlp(
     return nn.Sequential(*layers)
 
 
-device = None
+device: Any = None
 
 
-def init_gpu(use_gpu=True, gpu_id=0):
+def init_gpu(use_gpu: bool=True, gpu_id: int=0) -> None:
     global device
     if torch.cuda.is_available() and use_gpu:
         device = torch.device("cuda:" + str(gpu_id))
@@ -80,16 +81,16 @@ def init_gpu(use_gpu=True, gpu_id=0):
         print("GPU not detected. Defaulting to CPU.")
 
 
-def set_device(gpu_id):
+def set_device(gpu_id: int) -> None:
     torch.cuda.set_device(gpu_id)
 
 
-def from_numpy(*args, **kwargs):
+def from_numpy(*args: Any, **kwargs: Any) -> torch.Tensor:
     return torch.from_numpy(*args, **kwargs).float().to(device)
 
-def ones(*args, **kwargs):
+def ones(*args: Any, **kwargs: Any) -> torch.Tensor:
     return torch.ones(*args, **kwargs).to(device)
 
 
-def to_numpy(tensor):
+def to_numpy(tensor: torch.Tensor) -> np.ndarray:
     return tensor.to('cpu').detach().numpy()

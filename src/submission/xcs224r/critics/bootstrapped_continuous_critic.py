@@ -2,6 +2,8 @@ from .base_critic import BaseCritic
 from torch import nn
 from torch import optim
 import pdb
+from typing import Any, Dict
+import numpy as np
 
 from xcs224r.infrastructure import pytorch_util as ptu
 
@@ -20,19 +22,19 @@ class BootstrappedContinuousCritic(nn.Module, BaseCritic):
         Note: batch size /n/ is defined at runtime.
         is None
     """
-    def __init__(self, hparams):
+    def __init__(self, hparams: Dict[str, Any]) -> None:
         super().__init__()
         self.ob_dim = hparams['ob_dim']
         self.ac_dim = hparams['ac_dim']
-        self.discrete = hparams['discrete']
-        self.size = hparams['size']
-        self.n_layers = hparams['n_layers']
-        self.learning_rate = hparams['learning_rate']
+        self.discrete: bool = hparams['discrete']
+        self.size: int = hparams['size']
+        self.n_layers: int = hparams['n_layers']
+        self.learning_rate: float = hparams['learning_rate']
 
         # critic parameters
-        self.num_target_updates = hparams['num_target_updates']
-        self.num_grad_steps_per_target_update = hparams['num_grad_steps_per_target_update']
-        self.gamma = hparams['gamma']
+        self.num_target_updates: int = hparams['num_target_updates']
+        self.num_grad_steps_per_target_update: int = hparams['num_grad_steps_per_target_update']
+        self.gamma: float = hparams['gamma']
         self.critic_network = ptu.build_mlp(
             self.ob_dim,
             1,
@@ -46,15 +48,15 @@ class BootstrappedContinuousCritic(nn.Module, BaseCritic):
             self.learning_rate,
         )
 
-    def forward(self, obs):
+    def forward(self, obs: Any) -> Any:
         return self.critic_network(obs).squeeze(1)
 
-    def forward_np(self, obs):
+    def forward_np(self, obs: np.ndarray) -> np.ndarray:
         obs = ptu.from_numpy(obs)
         predictions = self(obs)
         return ptu.to_numpy(predictions)
 
-    def update(self, ob_no, ac_na, next_ob_no, reward_n, terminal_n):
+    def update(self, ob_no: np.ndarray, ac_na: np.ndarray, next_ob_no: np.ndarray, reward_n: np.ndarray, terminal_n: np.ndarray) -> Dict[str, Any]:
         """
             Update the parameters of the critic.
 
