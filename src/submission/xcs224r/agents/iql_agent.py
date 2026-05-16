@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from typing import Any, Dict
 
 from xcs224r.critics.dqn_critic import DQNCritic
 from xcs224r.critics.cql_critic import CQLCritic
@@ -16,12 +17,12 @@ import torch
 
 
 class IQLAgent(DQNAgent):
-    def __init__(self, env, agent_params, normalize_rnd=True, rnd_gamma=0.99):
+    def __init__(self, env: Any, agent_params: Dict[str, Any], normalize_rnd: bool=True, rnd_gamma: float=0.99) -> None:
         super(IQLAgent, self).__init__(env, agent_params)
         
         self.replay_buffer = MemoryOptimizedReplayBuffer(100000, 1, float_obs=True)
-        self.num_exploration_steps = agent_params['num_exploration_steps']
-        self.offline_exploitation = agent_params['offline_exploitation']
+        self.num_exploration_steps: int = agent_params['num_exploration_steps']
+        self.offline_exploitation: bool = agent_params['offline_exploitation']
 
         self.exploitation_critic = IQLCritic(agent_params, self.optimizer_spec)
         self.exploration_critic = DQNCritic(agent_params, self.optimizer_spec)
@@ -30,7 +31,7 @@ class IQLAgent(DQNAgent):
         self.explore_weight_schedule = agent_params['explore_weight_schedule']
         self.exploit_weight_schedule = agent_params['exploit_weight_schedule']
         
-        self.use_boltzmann = agent_params['use_boltzmann']
+        self.use_boltzmann: bool = agent_params['use_boltzmann']
         self.actor = ArgMaxPolicy(self.exploitation_critic)
         self.eval_policy = self.awac_actor = MLPPolicyAWAC(
             self.agent_params['ac_dim'],
@@ -42,15 +43,15 @@ class IQLAgent(DQNAgent):
             self.agent_params['awac_lambda'],
         )
 
-        self.exploit_rew_shift = agent_params['exploit_rew_shift']
-        self.exploit_rew_scale = agent_params['exploit_rew_scale']
-        self.eps = agent_params['eps']
+        self.exploit_rew_shift: float = agent_params['exploit_rew_shift']
+        self.exploit_rew_scale: float = agent_params['exploit_rew_scale']
+        self.eps: float = agent_params['eps']
 
-        self.running_rnd_rew_std = 1
+        self.running_rnd_rew_std: float = 1.0
         self.normalize_rnd = normalize_rnd
         self.rnd_gamma = rnd_gamma
 
-    def get_qvals(self, critic, obs, action=None, use_v=False):
+    def get_qvals(self, critic: Any, obs: torch.Tensor, action: torch.Tensor=None, use_v: bool=False) -> torch.Tensor:
         if use_v:
             q_value = critic.v_net(obs)
         else:
@@ -58,8 +59,8 @@ class IQLAgent(DQNAgent):
             q_value = torch.gather(qa_values, 1, action.type(torch.int64).unsqueeze(1))
         return q_value
 
-    def estimate_advantage(self, ob_no, ac_na, re_n, next_ob_no, terminal_n,
-                           n_actions=10):
+    def estimate_advantage(self, ob_no: np.ndarray, ac_na: np.ndarray, re_n: np.ndarray, next_ob_no: np.ndarray, terminal_n: np.ndarray,
+                           n_actions: int=10) -> torch.Tensor:
         
         ob_no = ptu.from_numpy(ob_no)
         ac_na = ptu.from_numpy(ac_na)
@@ -73,8 +74,8 @@ class IQLAgent(DQNAgent):
         # *** START CODE HERE ***
         # *** END CODE HERE ***
         
-    def train(self, ob_no, ac_na, re_n, next_ob_no, terminal_n):
-        log = {}
+    def train(self, ob_no: np.ndarray, ac_na: np.ndarray, re_n: np.ndarray, next_ob_no: np.ndarray, terminal_n: np.ndarray) -> Dict[str, Any]:
+        log: Dict[str, Any] = {}
 
         if self.t > self.num_exploration_steps:
             self.actor.set_critic(self.exploitation_critic)
@@ -134,7 +135,7 @@ class IQLAgent(DQNAgent):
         return log
 
 
-    def step_env(self):
+    def step_env(self) -> None:
         """
             Step the env and store the transition
             At the end of this block of code, the simulator should have been

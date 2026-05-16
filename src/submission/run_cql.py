@@ -5,13 +5,14 @@ from xcs224r.infrastructure.rl_trainer import RL_Trainer
 from xcs224r.agents.explore_or_exploit_agent import ExplorationOrExploitationAgent
 from xcs224r.infrastructure.dqn_utils import get_env_kwargs, PiecewiseSchedule, ConstantSchedule
 
+from typing import Any, Dict
 
 class Q_Trainer(object):
 
-    def __init__(self, params):
+    def __init__(self, params: Dict[str, Any]) -> None:
         self.params = params
 
-        train_args = {
+        train_args: Dict[str, Any] = {
             'num_agent_train_steps_per_iter': params['num_agent_train_steps_per_iter'],
             'num_critic_updates_per_agent_update': params['num_critic_updates_per_agent_update'],
             'train_batch_size': params['batch_size'],
@@ -19,25 +20,25 @@ class Q_Trainer(object):
             'use_boltzmann': params['use_boltzmann'],
         }
 
-        env_args = get_env_kwargs(params['env_name'])
+        env_args: Dict[str, Any] = get_env_kwargs(params['env_name'])
 
-        self.agent_params = {**train_args, **env_args, **params}
+        self.agent_params: Dict[str, Any] = {**train_args, **env_args, **params}
 
         self.params['agent_class'] = ExplorationOrExploitationAgent
         self.params['agent_params'] = self.agent_params
         self.params['train_batch_size'] = params['batch_size']
         self.params['env_wrappers'] = self.agent_params['env_wrappers']
 
-        self.rl_trainer = RL_Trainer(self.params)
+        self.rl_trainer: RL_Trainer = RL_Trainer(self.params)
 
-    def run_training_loop(self):
+    def run_training_loop(self) -> None:
         self.rl_trainer.run_training_loop(
             self.agent_params['num_timesteps'],
             collect_policy = self.rl_trainer.agent.actor,
             eval_policy = self.rl_trainer.agent.actor,
             )
 
-def main():
+def main() -> None:
 
     import argparse
     parser = argparse.ArgumentParser()

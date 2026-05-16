@@ -5,12 +5,13 @@ from torch.nn import utils
 from torch import nn
 import pdb
 import numpy as np
+from typing import Any, Dict
 
 from xcs224r.infrastructure import pytorch_util as ptu
 
 class IQLCritic(BaseCritic):
 
-    def __init__(self, hparams, optimizer_spec, **kwargs):
+    def __init__(self, hparams: Dict[str, Any], optimizer_spec: Any, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.env_name = hparams['env_name']
         self.ob_dim = hparams['ob_dim']
@@ -20,10 +21,10 @@ class IQLCritic(BaseCritic):
         else:
             self.input_shape = hparams['input_shape']
 
-        self.ac_dim = hparams['ac_dim']
-        self.double_q = hparams['double_q']
-        self.grad_norm_clipping = hparams['grad_norm_clipping']
-        self.gamma = hparams['gamma']
+        self.ac_dim: int = hparams['ac_dim']
+        self.double_q: bool = hparams['double_q']
+        self.grad_norm_clipping: float = hparams['grad_norm_clipping']
+        self.gamma: float = hparams['gamma']
 
         self.optimizer_spec = optimizer_spec
         network_initializer = hparams['q_func']
@@ -57,7 +58,7 @@ class IQLCritic(BaseCritic):
             self.v_optimizer,
             self.optimizer_spec.learning_rate_schedule,
         )
-        self.iql_expectile = hparams['iql_expectile']
+        self.iql_expectile: float = hparams['iql_expectile']
 
     def expectile_loss(self, diff):
         pass
@@ -69,7 +70,7 @@ class IQLCritic(BaseCritic):
         # *** END CODE HERE ***
 
 
-    def update_v(self, ob_no, ac_na):
+    def update_v(self, ob_no: np.ndarray, ac_na: np.ndarray) -> Dict[str, Any]:
         """
         Update value function using expectile loss
         """
@@ -95,7 +96,7 @@ class IQLCritic(BaseCritic):
 
 
 
-    def update_q(self, ob_no, ac_na, next_ob_no, reward_n, terminal_n):
+    def update_q(self, ob_no: np.ndarray, ac_na: np.ndarray, next_ob_no: np.ndarray, reward_n: np.ndarray, terminal_n: np.ndarray) -> Dict[str, Any]:
         """
         Use target v network to train Q
         """
@@ -120,13 +121,13 @@ class IQLCritic(BaseCritic):
 
         return {'Training Q Loss': ptu.to_numpy(loss)}
 
-    def update_target_network(self):
+    def update_target_network(self) -> None:
         for target_param, param in zip(
                 self.q_net_target.parameters(), self.q_net.parameters()
         ):
             target_param.data.copy_(param.data)
 
-    def qa_values(self, obs):
+    def qa_values(self, obs: np.ndarray) -> np.ndarray:
         obs = ptu.from_numpy(obs)
         qa_values = self.q_net(obs)
         return ptu.to_numpy(qa_values)

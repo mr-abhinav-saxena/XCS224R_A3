@@ -3,6 +3,7 @@ implementing DQN."""
 import random
 from collections import namedtuple
 import pdb
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import gymnasium as gym
 import numpy as np
@@ -16,7 +17,7 @@ import torch
 
 
 class Flatten(torch.nn.Module):
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         batch_size = x.shape[0]
         return x.view(batch_size, -1)
 
@@ -26,7 +27,7 @@ OptimizerSpec = namedtuple(
 )
 
 
-def register_custom_envs():
+def register_custom_envs() -> None:
     from gymnasium.envs.registration import registry
     if 'PointmassEasy-v0' not in registry:
         register(
@@ -54,12 +55,12 @@ def register_custom_envs():
         )
 
 
-def get_env_kwargs(env_name):
+def get_env_kwargs(env_name: str) -> Dict[str, Any]:
     
     if 'Pointmass' in env_name:
-        def pointmass_empty_wrapper(env):
+        def pointmass_empty_wrapper(env: gym.Env) -> gym.Env:
             return env
-        kwargs = {
+        kwargs: Dict[str, Any] = {
             'optimizer_spec': pointmass_optimizer(),
             'q_func': create_boxenv_q_network,
             'replay_buffer_size': int(1e5),
@@ -79,7 +80,7 @@ def get_env_kwargs(env_name):
 
     return kwargs
 
-def create_boxenv_q_network(ob_dim, num_actions):
+def create_boxenv_q_network(ob_dim: int, num_actions: int) -> nn.Module:
     return nn.Sequential(
         nn.Linear(ob_dim, 64),
         nn.ReLU(),
@@ -89,22 +90,22 @@ def create_boxenv_q_network(ob_dim, num_actions):
     )
 
 class Ipdb(nn.Module):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         import ipdb; ipdb.set_trace()
         return x
 
 
 class PreprocessAtari(nn.Module):
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         # MJ: I needed to add `contiguous` here;
             # might want to just add this in for students?
         x = x.permute(0, 3, 1, 2).contiguous()
         return x / 255.
 
 
-def pointmass_optimizer():
+def pointmass_optimizer() -> OptimizerSpec:
     return OptimizerSpec(
         constructor=optim.Adam,
         optim_kwargs=dict(
@@ -114,20 +115,20 @@ def pointmass_optimizer():
     )
 
 
-def pointmass_exploration_schedule(num_timesteps):
+def pointmass_exploration_schedule(num_timesteps: int) -> 'PiecewiseSchedule':
     return PiecewiseSchedule(
         [
-            (0, 1),
-            (num_timesteps * 0.1, 0.02),
+            (0, 1.0),
+            (int(num_timesteps * 0.1), 0.02),
         ], outside_value=0.02
     )
 
 
-def sample_n_unique(sampling_f, n):
+def sample_n_unique(sampling_f: Callable[[], Any], n: int) -> List[Any]:
     """Helper function. Given a function `sampling_f` that returns
     comparable objects, sample n such unique objects.
     """
-    res = []
+    res: List[Any] = []
     while len(res) < n:
         candidate = sampling_f()
         if candidate not in res:
@@ -136,13 +137,13 @@ def sample_n_unique(sampling_f, n):
 
 
 class Schedule(object):
-    def value(self, t):
+    def value(self, t: int) -> float:
         """Value of the schedule at time t"""
         raise NotImplementedError()
 
 
 class ConstantSchedule(object):
-    def __init__(self, value):
+    def __init__(self, value: float) -> None:
         """Value remains constant over time.
         Parameters
         ----------
@@ -151,17 +152,17 @@ class ConstantSchedule(object):
         """
         self._v = value
 
-    def value(self, t):
+    def value(self, t: int) -> float:
         """See Schedule.value"""
         return self._v
 
 
-def linear_interpolation(l, r, alpha):
+def linear_interpolation(l: float, r: float, alpha: float) -> float:
     return l + alpha * (r - l)
 
 
 class PiecewiseSchedule(object):
-    def __init__(self, endpoints, interpolation=linear_interpolation, outside_value=None):
+    def __init__(self, endpoints: List[Tuple[int, float]], interpolation: Callable[[float, float, float], float]=linear_interpolation, outside_value: Optional[float]=None) -> None:
         """Piecewise schedule.
         endpoints: [(int, int)]
             list of pairs `(time, value)` meaning that schedule should output
@@ -185,7 +186,7 @@ class PiecewiseSchedule(object):
         self._outside_value = outside_value
         self._endpoints      = endpoints
 
-    def value(self, t):
+    def value(self, t: int) -> float:
         """See Schedule.value"""
         for (l_t, l), (r_t, r) in zip(self._endpoints[:-1], self._endpoints[1:]):
             if l_t <= t and t < r_t:
@@ -197,7 +198,7 @@ class PiecewiseSchedule(object):
         return self._outside_value
 
 class LinearSchedule(object):
-    def __init__(self, schedule_timesteps, final_p, initial_p=1.0):
+    def __init__(self, schedule_timesteps: int, final_p: float, initial_p: float=1.0) -> None:
         """Linear interpolation between initial_p and final_p over
         schedule_timesteps. After this many timesteps pass final_p is
         returned.
@@ -215,12 +216,12 @@ class LinearSchedule(object):
         self.final_p            = final_p
         self.initial_p          = initial_p
 
-    def value(self, t):
+    def value(self, t: int) -> float:
         """See Schedule.value"""
         fraction  = min(float(t) / self.schedule_timesteps, 1.0)
         return self.initial_p + fraction * (self.final_p - self.initial_p)
 
-def compute_exponential_averages(variables, decay):
+def compute_exponential_averages(variables: List[Any], decay: float) -> Tuple[List[Any], Any]:
     """Given a list of tensorflow scalar variables
     create ops corresponding to their exponential
     averages
@@ -237,11 +238,12 @@ def compute_exponential_averages(variables, decay):
         Op to be run to update the averages with current value
         of variables.
     """
+    import tensorflow as tf # type: ignore
     averager = tf.train.ExponentialMovingAverage(decay=decay)
     apply_op = averager.apply(variables)
     return [averager.average(v) for v in variables], apply_op
 
-def minimize_and_clip(optimizer, objective, var_list, clip_val=10):
+def minimize_and_clip(optimizer: Any, objective: Any, var_list: List[Any], clip_val: float=10) -> Any:
     """Minimized `objective` using `optimizer` w.r.t. variables in
     `var_list` while ensure the norm of the gradients for each
     variable is clipped to `clip_val`
@@ -252,7 +254,7 @@ def minimize_and_clip(optimizer, objective, var_list, clip_val=10):
             gradients[i] = (tf.clip_by_norm(grad, clip_val), var)
     return optimizer.apply_gradients(gradients)
 
-def initialize_interdependent_variables(session, vars_list, feed_dict):
+def initialize_interdependent_variables(session: Any, vars_list: List[Any], feed_dict: Dict[Any, Any]) -> None:
     """Initialize a list of variables one at a time, which is useful if
     initialization of some variables depends on initialization of the others.
     """
@@ -272,18 +274,18 @@ def initialize_interdependent_variables(session, vars_list, feed_dict):
         else:
             vars_left = new_vars_left
 
-def get_wrapper_by_name(env, classname):
+def get_wrapper_by_name(env: gym.Env, classname: str) -> gym.Env:
     currentenv = env
     while True:
         if classname in currentenv.__class__.__name__:
             return currentenv
         elif isinstance(env, gym.Wrapper):
-            currentenv = currentenv.env
+            currentenv = currentenv.env # type: ignore
         else:
             raise ValueError("Couldn't find wrapper named %s"%classname)
 
 class MemoryOptimizedReplayBuffer(object):
-    def __init__(self, size, frame_history_len, float_obs=False):
+    def __init__(self, size: int, frame_history_len: int, float_obs: bool=False) -> None:
         """This is a memory efficient implementation of the replay buffer.
 
         The specific memory optimizations used here are:
@@ -317,16 +319,16 @@ class MemoryOptimizedReplayBuffer(object):
         self.next_idx      = 0
         self.num_in_buffer = 0
 
-        self.obs      = None
-        self.action   = None
-        self.reward   = None
-        self.done     = None
+        self.obs: Any      = None
+        self.action: Any   = None
+        self.reward: Any   = None
+        self.done: Any     = None
 
-    def can_sample(self, batch_size):
+    def can_sample(self, batch_size: int) -> bool:
         """Returns true if `batch_size` different transitions can be sampled from the buffer."""
         return batch_size + 1 <= self.num_in_buffer
 
-    def _encode_sample(self, idxes):
+    def _encode_sample(self, idxes: List[int]) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         obs_batch      = np.concatenate([self._encode_observation(idx)[None] for idx in idxes], 0)
         act_batch      = self.action[idxes]
         rew_batch      = self.reward[idxes]
@@ -336,7 +338,7 @@ class MemoryOptimizedReplayBuffer(object):
         return obs_batch, act_batch, rew_batch, next_obs_batch, done_mask
 
 
-    def sample(self, batch_size):
+    def sample(self, batch_size: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Sample `batch_size` different transitions.
 
         i-th sample transition is the following:
@@ -373,7 +375,7 @@ class MemoryOptimizedReplayBuffer(object):
         idxes = sample_n_unique(lambda: random.randint(0, self.num_in_buffer - 2), batch_size)
         return self._encode_sample(idxes)
 
-    def encode_recent_observation(self):
+    def encode_recent_observation(self) -> np.ndarray:
         """Return the most recent `frame_history_len` frames.
 
         Returns
@@ -386,7 +388,7 @@ class MemoryOptimizedReplayBuffer(object):
         assert self.num_in_buffer > 0
         return self._encode_observation((self.next_idx - 1) % self.size)
 
-    def _encode_observation(self, idx):
+    def _encode_observation(self, idx: int) -> np.ndarray:
         end_idx   = idx + 1 # make noninclusive
         start_idx = end_idx - self.frame_history_len
         # this checks if we are using low-dimensional observations, such as RAM
@@ -412,7 +414,7 @@ class MemoryOptimizedReplayBuffer(object):
             img_h, img_w = self.obs.shape[1], self.obs.shape[2]
             return self.obs[start_idx:end_idx].transpose(1, 2, 0, 3).reshape(img_h, img_w, -1)
 
-    def store_frame(self, frame):
+    def store_frame(self, frame: np.ndarray) -> int:
         """Store a single frame in the buffer at the next available index, overwriting
         old frames if necessary.
 
@@ -440,7 +442,7 @@ class MemoryOptimizedReplayBuffer(object):
 
         return ret
 
-    def store_effect(self, idx, action, reward, done):
+    def store_effect(self, idx: int, action: int, reward: float, done: bool) -> None:
         """Store effects of action taken after observing frame stored
         at index idx. The reason `store_frame` and `store_effect` is broken
         up into two functions is so that one can call `encode_recent_observation`

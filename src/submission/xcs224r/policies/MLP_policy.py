@@ -3,6 +3,7 @@ import itertools
 from torch import nn
 from torch.nn import functional as F
 from torch import optim
+from typing import Any, Dict, Optional, Union
 
 import numpy as np
 import torch
@@ -15,16 +16,16 @@ from xcs224r.policies.base_policy import BasePolicy
 class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
 
     def __init__(self,
-                 ac_dim,
-                 ob_dim,
-                 n_layers,
-                 size,
-                 discrete=False,
-                 learning_rate=1e-4,
-                 training=True,
-                 nn_baseline=False,
-                 **kwargs
-                 ):
+                 ac_dim: int,
+                 ob_dim: int,
+                 n_layers: int,
+                 size: int,
+                 discrete: bool=False,
+                 learning_rate: float=1e-4,
+                 training: bool=True,
+                 nn_baseline: bool=False,
+                 **kwargs: Any
+                 ) -> None:
         super().__init__(**kwargs)
 
         # init vars
@@ -43,8 +44,8 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
                                            n_layers=self.n_layers,
                                            size=self.size)
             self.logits_na.to(ptu.device)
-            self.mean_net = None
-            self.logstd = None
+            self.mean_net: Any = None
+            self.logstd: Any = None
             self.optimizer = optim.Adam(self.logits_na.parameters(),
                                         self.learning_rate)
         else:
@@ -63,14 +64,14 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
             )
 
         if nn_baseline:
-            self.baseline = ptu.build_mlp(
+            self.baseline: Any = ptu.build_mlp(
                 input_size=self.ob_dim,
                 output_size=1,
                 n_layers=self.n_layers,
                 size=self.size,
             )
             self.baseline.to(ptu.device)
-            self.baseline_optimizer = optim.Adam(
+            self.baseline_optimizer: Any = optim.Adam(
                 self.baseline.parameters(),
                 self.learning_rate,
             )
@@ -79,7 +80,7 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
 
     ##################################
 
-    def save(self, filepath):
+    def save(self, filepath: str) -> None:
         torch.save(self.state_dict(), filepath)
 
     ##################################
@@ -90,8 +91,8 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
             observation = obs
         else:
             observation = obs[None]
-        observation = ptu.from_numpy(observation)
-        action_distribution = self(observation)
+        observation_t = ptu.from_numpy(observation)
+        action_distribution = self(observation_t)
         action = action_distribution.sample()  # don't bother with rsample
         return ptu.to_numpy(action)
 
@@ -99,7 +100,7 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
     ####################################
 
     # update/train this policy
-    def update(self, observations, actions, **kwargs):
+    def update(self, observations: Union[np.ndarray, torch.Tensor], actions: Union[np.ndarray, torch.Tensor], **kwargs: Any) -> Any:
         raise NotImplementedError
 
     # This function defines the forward pass of the network.
@@ -107,7 +108,7 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
     # through it. For example, you can return a torch.FloatTensor. You can also
     # return more flexible objects, such as a
     # `torch.distributions.Distribution` object. It's up to you!
-    def forward(self, observation: torch.FloatTensor):
+    def forward(self, observation: torch.FloatTensor) -> distributions.Distribution:
         if self.discrete:
             logits = self.logits_na(observation)
             action_distribution = distributions.Categorical(logits=logits)
@@ -134,9 +135,9 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
 class MLPPolicyAC(MLPPolicy):
     # MJ: cut acs_labels_na and qvals from the signature if they are not used
     def update(
-            self, observations, actions,
-            adv_n=None, acs_labels_na=None, qvals=None
-    ):
+            self, observations: Union[np.ndarray, torch.Tensor], actions: Union[np.ndarray, torch.Tensor],
+            adv_n: Any=None, acs_labels_na: Any=None, qvals: Any=None
+    ) -> Any:
         raise NotImplementedError
         # Not needed for this homework
 
@@ -145,21 +146,21 @@ class MLPPolicyAC(MLPPolicy):
 
 class MLPPolicyAWAC(MLPPolicy):
     def __init__(self,
-                 ac_dim,
-                 ob_dim,
-                 n_layers,
-                 size,
-                 discrete=False,
-                 learning_rate=1e-4,
-                 training=True,
-                 nn_baseline=False,
-                 lambda_awac=10,
-                 **kwargs,
-                 ):
+                 ac_dim: int,
+                 ob_dim: int,
+                 n_layers: int,
+                 size: int,
+                 discrete: bool=False,
+                 learning_rate: float=1e-4,
+                 training: bool=True,
+                 nn_baseline: bool=False,
+                 lambda_awac: float=10,
+                 **kwargs: Any,
+                 ) -> None:
         self.lambda_awac = lambda_awac
         super().__init__(ac_dim, ob_dim, n_layers, size, discrete, learning_rate, training, nn_baseline, **kwargs)
     
-    def update(self, observations, actions, adv_n=None):
+    def update(self, observations: Union[np.ndarray, torch.Tensor], actions: Union[np.ndarray, torch.Tensor], adv_n: Any=None) -> float:
         if adv_n is None:
             assert False
         if isinstance(observations, np.ndarray):

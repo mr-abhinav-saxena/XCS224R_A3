@@ -1,20 +1,22 @@
 from xcs224r.infrastructure.utils import *
+from typing import Any, Dict, List, Tuple, Union
+import numpy as np
 
 
 class ReplayBuffer(object):
 
-    def __init__(self, max_size=1000000):
+    def __init__(self, max_size: int=1000000) -> None:
 
         self.max_size = max_size
-        self.paths = []
-        self.obs = None
-        self.acs = None
-        self.concatenated_rews = None
-        self.unconcatenated_rews = None
-        self.next_obs = None
-        self.terminals = None
+        self.paths: List[Dict[str, np.ndarray]] = []
+        self.obs: Any = None
+        self.acs: Any = None
+        self.concatenated_rews: Any = None
+        self.unconcatenated_rews: Any = None
+        self.next_obs: Any = None
+        self.terminals: Any = None
 
-    def add_rollouts(self, paths, noised=False):
+    def add_rollouts(self, paths: List[Dict[str, Any]], noised: bool=False) -> None:
 
         # add new rollouts into our list of rollouts
         for path in paths:
@@ -62,15 +64,17 @@ class ReplayBuffer(object):
     ########################################
     ########################################
 
-    def sample_random_rollouts(self, num_rollouts):
+    def sample_random_rollouts(self, num_rollouts: int) -> List[Dict[str, np.ndarray]]:
         rand_indices = np.random.permutation(len(self.paths))[:num_rollouts]
-        return self.paths[rand_indices]
+        return [self.paths[i] for i in rand_indices]
 
-    def sample_recent_rollouts(self, num_rollouts=1):
+    def sample_recent_rollouts(self, num_rollouts: int=1) -> List[Dict[str, np.ndarray]]:
         return self.paths[-num_rollouts:]
 
-    def can_sample(self, batch_size):
+    def can_sample(self, batch_size: int) -> bool:
         # print (self.obs.shape[0])
+        if self.obs is None:
+            return False
         if self.obs.shape[0] > batch_size:
             return True
         else:
@@ -79,16 +83,16 @@ class ReplayBuffer(object):
     ########################################
     ########################################
 
-    def sample_random_data(self, batch_size):
+    def sample_random_data(self, batch_size: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
 
         assert self.obs.shape[0] == self.acs.shape[0] == self.concatenated_rews.shape[0] == self.next_obs.shape[0] == self.terminals.shape[0]
         rand_indices = np.random.permutation(self.obs.shape[0])[:batch_size]
         return self.obs[rand_indices], self.acs[rand_indices], self.concatenated_rews[rand_indices], self.next_obs[rand_indices], self.terminals[rand_indices]
 
-    def sample(self, batch_size):
+    def sample(self, batch_size: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         return self.sample_random_data(batch_size)
     
-    def sample_recent_data(self, batch_size=1, concat_rew=True):
+    def sample_recent_data(self, batch_size: int=1, concat_rew: bool=True) -> Tuple[np.ndarray, np.ndarray, Any, np.ndarray, np.ndarray]:
 
         if concat_rew:
             return self.obs[-batch_size:], self.acs[-batch_size:], self.concatenated_rews[-batch_size:], self.next_obs[-batch_size:], self.terminals[-batch_size:]
