@@ -72,6 +72,18 @@ class IQLAgent(DQNAgent):
         # HINT: Access critic using self.exploitation_critic 
         # (critic trained in the offline setting)
         # *** START CODE HERE ***
+
+        # Get the Q-values for the current observations and actions
+        q_values = self.get_qvals(self.exploitation_critic, ob_no, ac_na)
+
+        # Get the V-values for the current observations
+        v_values = self.get_qvals(self.exploitation_critic, ob_no, use_v=True)
+
+        # Calculate the advantage
+        advantage = q_values - v_values
+
+        return advantage
+    
         # *** END CODE HERE ***
         
     def train(self, ob_no: np.ndarray, ac_na: np.ndarray, re_n: np.ndarray, next_ob_no: np.ndarray, terminal_n: np.ndarray) -> Dict[str, Any]:
@@ -112,8 +124,15 @@ class IQLAgent(DQNAgent):
             #update actor
             # TODO 1): Estimate the advantage with estimate_advantage function, which you will implement above. Make sure to detach the advantage estimates from the computation graph, since they should not backpropagate gradients into the critic.
             # TODO 2): Calculate the awac actor loss (actor_loss) using the awac_actor's update function
-            
+            # loss variable should be named as actor_loss as it is used later in the code
             # *** START CODE HERE ***
+
+            # Step 1: Estimate the advantage
+            advantage = self.estimate_advantage(ob_no, ac_na, re_n, next_ob_no, terminal_n).detach() # Detach the advantage estimates from the computation graph
+
+            # Step 2: Update AWAC actor with advantage estimates
+            actor_loss = self.awac_actor.update(ob_no, ac_na, adv_n = ptu.to_numpy(advantage))
+
             # *** END CODE HERE ***
             
             

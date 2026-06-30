@@ -45,16 +45,16 @@ class CQLCritic(BaseCritic):
         self.cql_alpha: float = hparams['cql_alpha']
 
     def dqn_loss(self, ob_no: torch.Tensor, ac_na: torch.Tensor, next_ob_no: torch.Tensor, reward_n: torch.Tensor, terminal_n: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        qa_t_values = self.q_net(ob_no)
-        q_t_values = torch.gather(qa_t_values, 1, ac_na.unsqueeze(1)).squeeze(1)
-        qa_tp1_values = self.q_net_target(next_ob_no)
+        qa_t_values = self.q_net(ob_no) # shape: (batch_size, ac_dim)
+        q_t_values = torch.gather(qa_t_values, 1, ac_na.unsqueeze(1)).squeeze(1) # shape: (batch_size,)
+        qa_tp1_values = self.q_net_target(next_ob_no) # shape: (batch_size, ac_dim)
 
         next_actions = self.q_net(next_ob_no).argmax(dim=1)
         q_tp1 = torch.gather(qa_tp1_values, 1, next_actions.unsqueeze(1)).squeeze(1)
 
         target = reward_n + self.gamma * q_tp1 * (1 - terminal_n)
-        target = target.detach()
-        loss = self.loss(q_t_values, target)
+        target = target.detach() # shape: (batch_size,)
+        loss = self.loss(q_t_values, target) # shape: (batch_size,)
 
         return loss, qa_t_values, q_t_values
 
@@ -75,11 +75,11 @@ class CQLCritic(BaseCritic):
             returns:
                 nothing
         """
-        ob_no = ptu.from_numpy(ob_no)
-        ac_na = ptu.from_numpy(ac_na).to(torch.long)
-        next_ob_no = ptu.from_numpy(next_ob_no)
-        reward_n = ptu.from_numpy(reward_n)
-        terminal_n = ptu.from_numpy(terminal_n)
+        ob_no = ptu.from_numpy(ob_no) # shape: (sum_of_path_lengths, ob_dim)
+        ac_na = ptu.from_numpy(ac_na).to(torch.long) # shape: (sum_of_path_lengths,)
+        next_ob_no = ptu.from_numpy(next_ob_no) # shape: (sum_of_path_lengths, ob_dim)
+        reward_n = ptu.from_numpy(reward_n) # shape: (sum_of_path_lengths,)
+        terminal_n = ptu.from_numpy(terminal_n) # shape: (sum_of_path_lengths,)
 
         # TODO: CQL Implementation
         # HINT: Obtain DQN loss, qa_t_values, q_t_values using self.dqn_loss
@@ -87,6 +87,29 @@ class CQLCritic(BaseCritic):
         # HINT: torch.logsumexp and torch.mean may be useful for calculating the cql_loss
         
         # *** START CODE HERE ***
+
+        # Conservative Q-Learning (CQL) adds a regularizer to prevent overestimation of Q-values.
+        # The CQL objective is: TD_loss + α * [mean(logsumexp(Q(s,a)) - Q(s,a_i))]
+        # where logsumexp(Q(s,a)) = log(Σ_a exp(Q(s,a))) and a_i is the in-distribution action.
+        
+        # 1. Get DQN loss and Q-values
+        dqn_loss, qa_t_values, q_t_values = self.dqn_loss(ob_no, ac_na, next_ob_no, reward_n, terminal_n)
+
+        # 2. Compute logsumexp of Q-values over all actions for each state
+        # qa_t_values shape: (batch_size, ac_dim)
+        # logsumexp computes log(Σ_a exp(Q(s,a))) for each state
+        q_t_logsumexp = torch.logsumexp(qa_t_values, dim=1) # shape: (batch_size,)
+
+        # 3. Compute CQL regularizer: mean(logsumexp(Q(s,a)) - Q(s,a_i))
+        # This penalizes high Q-values for OOD actions relative to in-distribution actions
+        # q_t_values shape: (batch_size,) - Q-values for in-distribution actions
+        cql_loss = torch.mean(q_t_logsumexp - q_t_values) # shape: (1,)
+
+        # 4. Total loss = DQN loss + α * CQL regularizer
+        # The CQL regularizer encourages conservative Q-values by penalizing
+        # the difference between logsumexp (all actions) and in-distribution Q-values
+        loss = dqn_loss + self.cql_alpha * cql_loss
+
         # *** END CODE HERE ***
         self.optimizer.zero_grad()
         loss.backward()
